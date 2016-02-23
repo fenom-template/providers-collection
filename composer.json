@@ -1,0 +1,25 @@
+
+{
+  "name": "fenom/providers-collection",
+  "type": "library",
+  "description": "Collection of additional providers",
+  "keywords": ["fenom", "loader", "tag", "provider", "multipath"],
+  "license": "BSD-3",
+  "authors": [
+	{
+	  "name": "Ivan Shalganov",
+	  "email": "a.cobest@gmail.com"
+	}
+  ],
+  "require": {
+	"php": ">=5.3"
+  },
+  "require-dev": {
+	"fenom/fenom": "2.*",
+	"phpunit/phpunit": "*",
+	"satooshi/php-coveralls": "dev-master"
+  },
+  "autoload": {
+	"psr-0": { "Fenom\\": "src/" }
+  }
+}
