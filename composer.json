@@ -16,8 +16,7 @@
   },
   "require-dev": {
 	"fenom/fenom": "2.*",
-	"phpunit/phpunit": "*",
-	"satooshi/php-coveralls": "dev-master"
+	"phpunit/phpunit": "*"
   },
   "autoload": {
 	"psr-0": { "Fenom\\": "src/" }
