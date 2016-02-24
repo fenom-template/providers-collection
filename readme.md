@@ -1,6 +1,6 @@
 Providers Collections
 ====
-
+[![Build Status](https://travis-ci.org/fenom-template/providers-collection.svg?branch=master)](https://travis-ci.org/fenom-template/providers-collection)
 [![Latest Stable Version](https://poser.pugx.org/fenom/providers-collection/v/stable)](https://packagist.org/packages/fenom/providers-collection) [![Total Downloads](https://poser.pugx.org/fenom/providers-collection/downloads)](https://packagist.org/packages/fenom/providers-collection) [![Latest Unstable Version](https://poser.pugx.org/fenom/providers-collection/v/unstable)](https://packagist.org/packages/fenom/providers-collection) [![License](https://poser.pugx.org/fenom/providers-collection/license)](https://packagist.org/packages/fenom/providers-collection)
 
 ## Install
