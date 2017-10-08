@@ -18,7 +18,7 @@ Provider supports multiple directories where to look for templates.
 Create and configure provider
 
 ```php
-$provider = new Fenom\MultiPathProvider([$path1, $path2]);
+$provider = new Fenom\MultiPathsProvider([$path1, $path2]);
 $provider->addPath($path3);
 $provider->prependPath($path4);
 ```
