@@ -2,61 +2,62 @@
 
 namespace Fenom;
 
+use InvalidArgumentException;
+use RecursiveIteratorIterator;
+use RecursiveDirectoryIterator;
+
 /**
- * Loads template from the filesystem from multiple directories.
+ * Loads template from the filesystem, find file in multiple directories.
+ 
  * @package Fenom
  */
 class MultiPathsProvider implements ProviderInterface
 {
-
-    protected $_paths       = array();
-    protected $_clear_cache = array();
+    /**
+     * @var string[]
+     */
+    protected $paths = [];
+    /**
+     * @var string
+     */
+    protected $extension = 'tpl';
+    /**
+     * @var bool
+     */
+    protected $clear_cache = false;
 
     /**
-     * Constructor
+     * Creates new instance.
      *
-     * @param string|string[] $path
+     * @param string|string[] $paths Path or paths
+     * @param string $extension File extension
      */
-    public function __construct($path) {
-        if(is_array($path)) {
-            foreach($path as $dir) {
-                $this->addPath($dir);
-            }
-        } else {
-            $this->addPath($path);
-        }
+    public function __construct($paths, $extension = 'tpl')
+    {
+        $this->setPaths($paths);
+        $this->extension = strtolower($extension);
     }
 
     /**
      * Adds a path where templates are stored.
      *
      * @param string $path A path where to look for templates
-     *
+     * @param bool $prepend Wherever prepends a path
      * @return $this
+     * @throws InvalidArgumentException
      */
-    public function addPath($path)
+    public function addPath($path, $prepend = false)
     {
-        if ($_dir = realpath($path)) {
-            $this->_paths[] = $_dir;
-        } else {
-            throw new \LogicException("Template directory {$path} doesn't exists");
-        }
-        return $this;
-    }
-
-    /**
-     * Prepends a path where templates are stored.
-     *
-     * @param string $path A path where to look for templates
-     *
-     * @return $this
-     */
-    public function prependPath($path)
-    {
-        if ($_dir = realpath($path)) {
-            array_unshift($this->_paths, $_dir);
-        } else {
-            throw new \LogicException("Template directory {$path} doesn't exists");
+        $realPath = realpath($path);
+        if (! $realPath) {
+            throw new InvalidArgumentException("Template directory {$path} doesn't exists");
+        } 
+        if (! in_array($realPath, $this->paths)) {
+            if ($prepend) {
+                array_unshift($this->paths, $realPath);
+            } else {
+                $this->paths[] = $realPath;
+            }
         }
         return $this;
     }
@@ -65,18 +66,13 @@ class MultiPathsProvider implements ProviderInterface
      * Sets the paths where templates are stored.
      *
      * @param string|string[] $paths A path or an array of paths where to look for templates
-     *
      * @return $this
      */
     public function setPaths($paths)
     {
-        $this->_paths = array();
-        if(is_array($paths)) {
-            foreach($paths as $path) {
-                $this->addPath($path);
-            }
-        } else {
-            $this->addPath($paths);
+        $this->paths = [];
+        foreach ((array) $paths as $path) {
+            $this->addPath($path);
         }
         return $this;
     }
@@ -86,36 +82,46 @@ class MultiPathsProvider implements ProviderInterface
      *
      * @return array
      */
-    public function getPaths() {
-        return $this->_paths;
+    public function getPaths()
+    {
+        return $this->paths;
     }
 
     /**
      * Disable PHP cache for files. PHP cache some operations with files then script works.
-     * @see http://php.net/manual/en/function.clearstatcache.php
+     * @link http://php.net/manual/en/function.clearstatcache.php
      *
      * @param bool $status
-     *
      * @return $this
      */
-    public function setClearCachedStats($status = true) {
-        $this->_clear_cache = $status;
+    public function setClearCachedStats($status = true)
+    {
+        $this->clear_cache = (bool) $status;
         return $this;
     }
 
     /**
-     * Get realpath of template
+     * Get realpath of template.
      *
      * @param string $tpl the template name
-     * @return bool|string
+     * @param bool $throw
+     * @return string
+     * @throws InvalidArgumentException
      */
-    public function getTemplatePath($tpl) {
-        foreach($this->_paths as $path) {
-            if(($path = realpath($path . "/" . $tpl)) && strpos($path, $path) === 0) {
-                return $path;
+    public function getTemplatePath($tpl, $throw = true)
+    {
+        if (strtolower(substr($tpl, -strlen($this->extension))) != $this->extension) {
+            $tpl .= '.' . $this->extension;
+        }
+        foreach ($this->paths as $path) {
+            $file = realpath($path . DIRECTORY_SEPARATOR . $tpl);
+            if ($file) {
+                return $file;
             }
         }
-        return false;
+        if ($throw) {
+            throw new InvalidArgumentException("Template $tpl not found");
+        }
     }
 
     /**
@@ -124,21 +130,7 @@ class MultiPathsProvider implements ProviderInterface
      */
     public function templateExists($tpl)
     {
-        return (bool)$this->getTemplatePath($tpl);
-    }
-
-    /**
-     * Get template path
-     * @param $tpl
-     * @return string
-     * @throws \RuntimeException
-     */
-    protected function _getTemplatePath($tpl)
-    {
-        if ($path = $this->getTemplatePath($tpl)) {
-            return $path;
-        }
-        throw new \RuntimeException("Template $tpl not found");
+        return (bool) $this->getTemplatePath($tpl, false);
     }
 
     /**
@@ -148,12 +140,12 @@ class MultiPathsProvider implements ProviderInterface
      */
     public function getSource($tpl, &$time)
     {
-        $tpl = $this->_getTemplatePath($tpl);
-        if($this->_clear_cache) {
-            clearstatcache(true, $tpl);
+        $path = $this->getTemplatePath($tpl);
+        if ($this->clear_cache) {
+            clearstatcache(true,  $path);
         }
-        $time = filemtime($tpl);
-        return file_get_contents($tpl);
+        $time = filemtime($path);
+        return file_get_contents($path);
     }
 
     /**
@@ -162,11 +154,11 @@ class MultiPathsProvider implements ProviderInterface
      */
     public function getLastModified($tpl)
     {
-        $tpl = $this->_getTemplatePath($tpl);
-        if($this->_clear_cache) {
-            clearstatcache(true, $tpl);
+        $path = $this->getTemplatePath($tpl);
+        if ($this->clear_cache) {
+            clearstatcache(true, $path);
         }
-        return filemtime($tpl);
+        return filemtime($path);
     }
 
     /**
@@ -178,14 +170,14 @@ class MultiPathsProvider implements ProviderInterface
     public function verify(array $templates)
     {
         foreach ($templates as $template => $mtime) {
-            $path = $this->getTemplatePath($template);
-            if(!$path) {
+            $path = $this->getTemplatePath($template, false);
+            if (! $path) {
                 return false;
             }
-            if($this->_clear_cache) {
+            if ($this->clear_cache) {
                 clearstatcache(true, $path);
             }
-            if (@filemtime($path) !== $mtime) {
+            if (filemtime($path) != $mtime) {
                 return false;
             }
 
@@ -194,36 +186,43 @@ class MultiPathsProvider implements ProviderInterface
     }
 
     /**
-     * Get all names of templates from provider
-     * @param string $extension
-     * @return array|\Iterator
+     * Get all names of templates from provider.
+     * 
+     * @param string|null $extension File extension
+     * @return array
      */
-    public function getList($extension = "tpl")
+    public function getList($extension = null)
     {
-        $list = array();
-        foreach($this->_paths as $path) {
-            $list = array_merge($list, $this->_getListFromPath($path, $extension));
+        $list = [];
+        $extension = $extension ? strtolower($extension) : $this->extension;
+        foreach($this->paths as $path) {
+            $list = array_merge($list, $this->getListFromPath($path, $extension));
         }
         return array_unique($list);
     }
 
     /**
-     * @param string $extension
+     * Returns list of templates.
+     *
+     * @param string $path Path to templates
+     * @param string $extension File extension
      * @return array
      */
-    protected function _getListFromPath($path, $extension = "tpl")
+    protected function getListFromPath($path, $extension)
     {
-        $list     = array();
-        $iterator = new \RecursiveIteratorIterator(
-            new \RecursiveDirectoryIterator($path,
-                \FilesystemIterator::CURRENT_AS_FILEINFO | \FilesystemIterator::SKIP_DOTS),
-            \RecursiveIteratorIterator::CHILD_FIRST
+        $list = [];
+        $iterator = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator(
+                $path,
+                RecursiveDirectoryIterator::CURRENT_AS_FILEINFO | RecursiveDirectoryIterator::SKIP_DOTS
+            ),
+            RecursiveIteratorIterator::CHILD_FIRST
         );
-        $path_len = strlen($path);
+        $path_length = strlen($path) + 1;
+        /* @var \SplFileInfo $file */
         foreach ($iterator as $file) {
-            /* @var \SplFileInfo $file */
-            if ($file->isFile() && $file->getExtension() == $extension) {
-                $list[] = substr($file->getPathname(), $path_len + 1);
+            if ($file->isFile() && strtolower($file->getExtension()) == $extension) {
+                $list[] = substr($file->getPathname(), $path_length);
             }
         }
         return $list;
