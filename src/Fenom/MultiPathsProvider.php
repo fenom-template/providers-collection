@@ -216,12 +216,12 @@ class MultiPathsProvider implements ProviderInterface
                 $path,
                 RecursiveDirectoryIterator::CURRENT_AS_FILEINFO | RecursiveDirectoryIterator::SKIP_DOTS
             ),
-            RecursiveIteratorIterator::CHILD_FIRST
+            RecursiveIteratorIterator::LEAVES_ONLY
         );
         $path_length = strlen($path) + 1;
         /* @var \SplFileInfo $file */
         foreach ($iterator as $file) {
-            if ($file->isFile() && strtolower($file->getExtension()) == $extension) {
+            if (strtolower($file->getExtension()) == $extension) {
                 $list[] = substr($file->getPathname(), $path_length);
             }
         }
